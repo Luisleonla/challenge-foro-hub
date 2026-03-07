@@ -4,13 +4,17 @@ import com.aluracursos.forohub.domain.topico.dto.DatosActualizarTopico;
 import com.aluracursos.forohub.domain.topico.dto.DatosDetalleTopico;
 import com.aluracursos.forohub.domain.topico.dto.DatosListarTopico;
 import com.aluracursos.forohub.domain.topico.dto.DatosRegistroTopico;
+import com.aluracursos.forohub.domain.user.Usuario;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -24,7 +28,11 @@ public class TopicoController {
     @PostMapping
     @Transactional
     public ResponseEntity registrar(@RequestBody @Valid DatosRegistroTopico datos, UriComponentsBuilder uriComponentsBuilder) {
-        var topico = new Topico(datos);
+//        Obtenemos al usuario actual para poder enviarlo como parámetro.
+        var usuarioLogueado = (Usuario) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+
+        var topico = new Topico(datos, usuarioLogueado);
         repository.save(topico);
         var uri = uriComponentsBuilder.path("/topicos/{id}").buildAndExpand(topico.getId()).toUri();
         return ResponseEntity.created(uri).body(new DatosDetalleTopico(topico));
@@ -45,16 +53,28 @@ public class TopicoController {
 
     @PutMapping("/{id}")
     @Transactional
-    public ResponseEntity actualizarTopico(@RequestBody DatosActualizarTopico datos, @PathVariable Long id) {
+    public ResponseEntity actualizarTopico(
+            @PathVariable Long id,
+            @RequestBody @Valid DatosActualizarTopico datos,
+            @AuthenticationPrincipal Usuario usuarioLogueado) {
+
         var topico = repository.findById(id)
                         .orElseThrow(() -> new EntityNotFoundException());
+
+        if(!topico.getAutor().equals(usuarioLogueado)){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         topico.actualizarTopico(datos);
         return ResponseEntity.ok(new DatosDetalleTopico(topico));
     }
     @DeleteMapping("/{id}")
-    public ResponseEntity eliminarTopico(@PathVariable Long id) {
-        repository.findById(id)
+    public ResponseEntity eliminarTopico(@PathVariable Long id, @AuthenticationPrincipal Usuario usuarioLogueado) {
+        var topico = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException());
+
+        if(!topico.getAutor().equals(usuarioLogueado)){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         repository.deleteById(id);
         return ResponseEntity.noContent().build();
     }

@@ -1,4 +1,4 @@
-package com.aluracursos.forohub.infra.security.exceptions;
+package com.aluracursos.forohub.infra.exceptions;
 
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -31,7 +31,7 @@ public class GestorDeErrores {
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity gestionarErrorBadCredentials() {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Credenciales inválidas");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario o contraseña inválidas");
     }
 
     @ExceptionHandler(AuthenticationException.class)
